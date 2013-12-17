@@ -26,6 +26,7 @@ public:
 
     void set_name(char* name);
     char* get_name() const;
+    virtual void set_parent(MenuComponent* pParent);
 
     virtual MenuComponent* select() = 0;
 
@@ -38,6 +39,7 @@ class MenuItem : public MenuComponent
 {
 public:
     MenuItem(char* name);
+    MenuItem(char* name, void (*on_select)(MenuItem*));
 
     void set_select_function(void (*on_select)(MenuItem*));
 
@@ -58,10 +60,9 @@ public:
     MenuComponent* activate();
     virtual MenuComponent* select();
 
-    void add_item(MenuItem* pItem, void (*on_select)(MenuItem*));
-    Menu const* add_menu(Menu* pMenu);
+    virtual MenuComponent const* add(MenuComponent* pMenu);
 
-    void set_parent(Menu* pParent);
+    virtual void set_parent(Menu* pParent);
     Menu const* get_parent() const;
 
     MenuComponent const* get_selected() const;

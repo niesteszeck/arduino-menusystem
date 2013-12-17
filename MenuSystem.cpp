@@ -27,6 +27,9 @@ void MenuComponent::set_name(char* name)
     _name = name;
 }
 
+void MenuComponent::set_parent(MenuComponent* pParent) {
+
+}
 
 // *********************************************************
 // Menu
@@ -94,22 +97,6 @@ MenuComponent* Menu::select()
     return this;
 }
 
-void Menu::add_item(MenuItem* pItem, void (*on_select)(MenuItem*))
-{
-    // Prevent memory overrun
-    if (_num_menu_components == MAX_MENU_ITEMS)
-        return;
-
-    _menu_components[_num_menu_components] = pItem;
-
-    pItem->set_select_function(on_select);
-
-    if (_num_menu_components == 0)
-        _p_sel_menu_component = pItem;
-
-    _num_menu_components++;
-}
-
 Menu const* Menu::get_parent() const
 {
     return _p_parent;
@@ -120,8 +107,10 @@ void Menu::set_parent(Menu* pParent)
     _p_parent = pParent;
 }
 
-Menu const* Menu::add_menu(Menu* pMenu)
+MenuComponent const* Menu::add(MenuComponent* pMenu)
 {
+    if (_num_menu_components == MAX_MENU_ITEMS)
+        return NULL;
     pMenu->set_parent(this);
 
     _menu_components[_num_menu_components] = pMenu;
@@ -161,6 +150,12 @@ byte Menu::get_cur_menu_component_num() const
 MenuItem::MenuItem(char* name)
 : MenuComponent(name),
   _on_select(0)
+{
+}
+
+MenuItem::MenuItem(char* name, void (*on_select)(MenuItem*))
+: MenuComponent(name),
+  _on_select(on_select)
 {
 }
 

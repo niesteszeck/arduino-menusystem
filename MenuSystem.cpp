@@ -31,6 +31,22 @@ void MenuComponent::set_parent(MenuComponent* pParent) {
 
 }
 
+boolean MenuComponent::next(boolean loop) {
+    return false;
+}
+
+boolean MenuComponent::prev(boolean loop) {
+    return false;
+}
+
+boolean MenuComponent::increment(int n) {
+    return false;
+}
+
+boolean MenuComponent::decrement(int n) {
+    return false;
+}
+
 // *********************************************************
 // Menu
 // *********************************************************
@@ -80,6 +96,13 @@ boolean Menu::prev(boolean loop)
     }
 
     return false;
+}
+
+boolean Menu::increment(int n) {
+    return _p_sel_menu_component->increment();
+}
+boolean Menu::decrement(int n) {
+    return _p_sel_menu_component->decrement();
 }
 
 MenuComponent* Menu::activate()
@@ -173,6 +196,49 @@ MenuComponent* MenuItem::select()
 }
 
 // *********************************************************
+// SetupItem
+// *********************************************************
+
+SetupItem::SetupItem(char* name, int value)
+: MenuComponent(name),
+  _value(value)
+{
+    _valueName = "                                                       ";
+}
+
+SetupItem::~SetupItem() {
+}
+
+int SetupItem::get_value() {
+    return _value;
+}
+
+void SetupItem::set_name(char* name) {
+    _name = name;
+}
+
+char* SetupItem::get_name() const {
+    sprintf(_valueName,"%s: %d",_name, _value);
+    return _valueName;
+}
+
+boolean SetupItem::increment(int n) {
+    // TODO: verificar el rebalse
+    _value+= n;
+    return true;
+}
+boolean SetupItem::decrement(int n) {
+    if(_value-n<0)
+        return false;
+    _value-= n;
+    return true;
+}
+MenuComponent* SetupItem::select()
+{
+    return 0;
+}
+
+// *********************************************************
 // MenuSystem
 // *********************************************************
 
@@ -190,6 +256,14 @@ boolean MenuSystem::next(boolean loop)
 boolean MenuSystem::prev(boolean loop)
 {
     return _p_curr_menu->prev(loop);
+}
+
+boolean MenuSystem::increment(int n) {
+    return _p_curr_menu->increment(n);
+}
+
+boolean MenuSystem::decerment(int n) {
+    return _p_curr_menu->decrement(n);
 }
 
 void MenuSystem::select(boolean return_to_root)

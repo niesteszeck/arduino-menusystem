@@ -11,18 +11,8 @@
 #include <MenuSystem.h>
 #include <LiquidCrystal.h>
 
-// Menu variables
-MenuSystem ms;
-Menu mm("Main Menu");
-MenuItem mm_mi1("Read Analog 0 A0");
-MenuItem mm_mi2("Blink led");
-Menu mu1("Date & Time");
-MenuItem mu1_mi1("Show current");
-MenuItem mu1_mi2("Set");
-MenuItem mu1_mi3("Go back");
-
 /*
-The LCD circuit:
+ The LCD circuit:
  * LCD RS pin to digital pin 8
  * LCD Enable pin to digital pin 9
  * LCD D4 pin to digital pin 4
@@ -34,27 +24,119 @@ The LCD circuit:
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(8     ,     9 ,      4 ,      5 ,      6 ,      7 );
 
+// Menu variables
+MenuSystem ms;
+Menu mm("Main Menu");
+
+Menu sm1("Setup Values");
+SetupItem sm_mi0("value1", 5);
+SetupItem sm_mi1("value2", 5);
+SetupItem sm_mi2("value3", 5);
+SetupItem sm_mi3("value4", 5);
+
+MenuItem mm_mi1("Read Analog 0 A0");
+MenuItem mm_mi2("Blink led");
+
+Menu mu1("Date & Time");
+MenuItem mu1_mi1("Show current");
+MenuItem mu1_mi2("Set");
+MenuItem mu1_mi3("Go back");
+
+#define BUTTON_CANCEL    6
+#define BUTTON_SELECT    5
+#define BUTTON_LEFT      4
+#define BUTTON_DOWN      3
+#define BUTTON_UP        2
+#define BUTTON_RIGHT     1
+#define BUTTON_NONE      0
+
 //Example related
 #define SELECTED_DISPLAY_DELAY 1500
-// menuSelected:  State var that indicates that a menu item has been
-//                selected. The plan is to update acordingly the LCD
-//                if we want to use the display to other thing
-//                like set up a variable (show on this example with time)
-boolean menuSelected = false; // no menu item has been selected
-boolean commandReceived = false;// no command has been received (Seria, button, etc)
-enum setMenuSelected_Type { 
-  DATETIME, OTHER }; // this enum is in case we want to expand this example
-setMenuSelected_Type setMenu;
-byte cursorPosition;
-String setString;
 
-int led = 41; // connect a led+resistor on pin 41 or change this number to 13 to use default arduino led on board
+int led = 13; // connect a led+resistor on pin 41 or change this number to 13 to use default arduino led on board
 int ledState = LOW;
-String dateTime = "2012-12-02 17:55";
+
+void serialPrintHelp() {
+  Serial.println("***************");
+  Serial.println("w: up");
+  Serial.println("s: down");
+  Serial.println("a: right");
+  Serial.println("d: left");
+  Serial.println("q: Select");
+  Serial.println("e: Cancel");
+  Serial.println("?: print this help");
+  Serial.println("h: print this help");
+  Serial.println("***************");
+
+}
+byte serialHandler() {
+  char inChar;
+  if ((inChar = Serial.read()) > 0) {
+
+    switch (inChar) {
+    case 'w':
+      return BUTTON_UP;
+      break;
+    case 's':
+      return BUTTON_DOWN;
+      break;
+    case 'a':
+      return BUTTON_LEFT;
+    case 'd':
+      return BUTTON_RIGHT;
+      break;
+    case 'e':
+      return BUTTON_CANCEL;
+      break;
+    case 'q':
+      return BUTTON_SELECT;
+    case '?':
+    case 'h': // Display help
+      serialPrintHelp();
+      break;
+    default:
+      break;
+    }
+  }
+  return BUTTON_NONE;
+}
+
+void react(byte op) {
+  /*
+     BUTTON_CANCEL
+   BUTTON_SELECT
+   BUTTON_LEFT
+   BUTTON_DOWN_UP
+   BUTTON_RIGHT
+   BUTTON_NONE
+   */
+  if (op == BUTTON_NONE)
+    return;
+  switch (op) {
+  case BUTTON_CANCEL:
+    break;
+  case BUTTON_SELECT:
+    ms.select(false);
+    break;
+  case BUTTON_LEFT:
+    ms.prev();
+    break;
+  case BUTTON_DOWN:
+    ms.decerment();
+    break;
+  case BUTTON_UP:
+    ms.increment();
+    break;
+  case BUTTON_RIGHT:
+    ms.next();
+    break;
+  }
+  displayMenu();
+}
 
 // Menu callback functions
 void on_item1_selected(MenuItem* p_menu_item) {
-  lcd.setCursor(0,1);
+  lcd.setCursor(0, 1);
   lcd.print("Analog A0: ");
   lcd.print(analogRead(A0));
   delay(SELECTED_DISPLAY_DELAY);
@@ -62,10 +144,10 @@ void on_item1_selected(MenuItem* p_menu_item) {
 
 void on_item2_selected(MenuItem* p_menu_item) {
   ledState = !ledState;
-  digitalWrite(led,ledState);
-  lcd.setCursor(0,1);
+  digitalWrite(led, ledState);
+  lcd.setCursor(0, 1);
   lcd.print("Led state: ");
-  if(ledState)
+  if (ledState)
     lcd.print("ON");
   else
     lcd.print("OFF");
@@ -76,38 +158,24 @@ void on_back_selected(MenuItem* p_menu_item) {
   ms.back();
 }
 void on_time_show_selected(MenuItem* p_menu_item) {
-  lcd.setCursor(0,1);
-  lcd.print(dateTime);
-  delay(SELECTED_DISPLAY_DELAY);
+  lcd.setCursor(0, 1);
 }
-void on_time_set_selected(MenuItem* p_menu_item)
-{
-  setString = dateTime;
-  lcd.setCursor(0,1);
-  lcd.print(setString);
-  cursorPosition = 0;
-  lcd.setCursor(cursorPosition,1);
-  lcd.blink();
-  setMenu = DATETIME;
-  menuSelected = true;
+void on_time_set_selected(MenuItem* p_menu_item) {
+  lcd.setCursor(0, 1);
 
 }
 
-// Standard arduino functions
-
+//The setup function is called once at startup of the sketch
 void setup() {
   Serial.begin(9600);
-  pinMode(led,OUTPUT);
+  pinMode(led, OUTPUT);
   lcd.begin(16, 2);
   serialPrintHelp();
   Serial.println("Setting up the menu.");
 
-  // init example vars
-  menuSelected = false; 
-
   // Menu setup
   /*
-  Menu Structure:
+     Menu Structure:
    -Analog read
    -Led blink
    -Date & Time
@@ -116,30 +184,32 @@ void setup() {
    --Back
    
    */
+  // Set the callbacks
   mm_mi1.set_select_function(&on_item1_selected);
   mm_mi2.set_select_function(&on_item2_selected);
-  mm.add(&mm_mi1);
-  mm.add(&mm_mi2);
-
   mu1_mi1.set_select_function(&on_time_show_selected);
   mu1_mi2.set_select_function(&on_time_set_selected);
   mu1_mi3.set_select_function(&on_back_selected);
+
+  mm.add(&sm1);
+  sm1.add(&sm_mi0);
+  sm1.add(&sm_mi1);
+  sm1.add(&sm_mi2);
+  sm1.add(&sm_mi3);
+
+  mm.add(&mm_mi1);
+  mm.add(&mm_mi2);
+
   mm.add(&mu1);
   mu1.add(&mu1_mi1);
   mu1.add(&mu1_mi2);
   mu1.add(&mu1_mi3);
 
   ms.set_root_menu(&mm);
-  Serial.println("Menu setted.");
+
   displayMenu();
-}
 
-void loop() {
-  // Handle serial commands
-  serialHandler();
-  //SELECTED_DISPLAY_DELAY
-  updateDisplay();
-
+  Serial.println("Menu setted.");
 }
 
 void displayMenu() {
@@ -151,111 +221,11 @@ void displayMenu() {
   lcd.print(cp_menu->get_selected()->get_name());
 }
 
-void updateDisplay() {
-  if(!menuSelected && commandReceived) {
-    displayMenu();
-    commandReceived = false;
-  } 
-  else if (commandReceived) {
-    switch(setMenu) {
-    case DATETIME:
-
-      break;
-      // add new cases as you add set menus (don't forget to add the corresponding enum)
-    default:
-      break;
-    }
-  }
+// The loop function is called in an endless loop
+void loop() {
+  int buttonPresed;
+  // Handle commands
+  buttonPresed = serialHandler();
+  react(buttonPresed);
 }
-
-void serialHandler() {
-  char inChar;
-  if((inChar = Serial.read())>0) {
-
-    switch (inChar) {
-    case 'w': // Previus item
-      if(!menuSelected)
-        ms.prev();
-      else {
-        if(setMenu == DATETIME) {
-          if(setString[cursorPosition]>47 && setString[cursorPosition]<57)
-            setString[cursorPosition]++;
-          lcd.write(setString[cursorPosition]);
-          lcd.setCursor(cursorPosition,1);
-        }
-      }
-      break;
-    case 's': // Next item
-      if(!menuSelected)
-        ms.next();
-      else {
-        if(setMenu == DATETIME) {
-          if(setString[cursorPosition]>48 && setString[cursorPosition]<58)
-            setString[cursorPosition]--;
-          lcd.write(setString[cursorPosition]);
-          lcd.setCursor(cursorPosition,1);
-        }
-      }
-      break;
-    case 'a': // Back presed
-      if(!menuSelected)
-        ms.back();
-      else if(cursorPosition>0)
-        lcd.setCursor(--cursorPosition,1);
-      break;
-    case 'd': // Select presed
-      if(!menuSelected)
-        ms.select();
-      else if(cursorPosition<15)
-        lcd.setCursor(++cursorPosition,1);
-      break;
-    case 'e': // Cancel (clear menuSelected) For debug purpose
-      menuSelected = false;
-      break;
-    case 'q': // Set
-      if(menuSelected) {
-        if(setMenu == DATETIME) {
-          dateTime = setString;
-          lcd.setCursor(0,1);
-          lcd.print("Time seted      ");
-          delay(SELECTED_DISPLAY_DELAY);
-          menuSelected = false;
-        }
-        lcd.noBlink();
-      }
-    case '?':
-    case 'h': // Display help
-      serialPrintHelp();
-      break;
-    default:
-      break;
-    } 
-    commandReceived = true;
-  }
-}
-
-
-void serialPrintHelp() {
-  Serial.println("***************");
-  Serial.println("w: go to previus item (up)");
-  Serial.println("s: go to next item (down)");
-  Serial.println("a: go back (right)");
-  Serial.println("d: select \"selected\" item (left)");
-  Serial.println("q: set (no meaning while moving");
-  Serial.println("   over the menu, see LCDNav");
-  Serial.println("   example if you get confuse");
-  Serial.println("e: erase menuSelected flag");
-  Serial.println("   can be used as a cancel button");
-  Serial.println("?: print this help");
-  Serial.println("h: print this help");
-  Serial.println("***************");
-
-}
-
-
-
-
-
-
-
 
